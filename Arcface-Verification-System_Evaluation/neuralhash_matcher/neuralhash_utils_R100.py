@@ -62,6 +62,11 @@ def load_hyperplanes(path):
     arr = arr.reshape(96, 128)
     return arr
 
+def load_hyperplanes_512(path):
+    with open(path, "rb") as f:
+            arr = np.fromfile(f, dtype=np.float32)
+    arr = arr.reshape(96, 512)
+    return arr
 
 def get_embedding(image_path):
     """
@@ -114,6 +119,13 @@ def hash_embedding(emb_512, pca, hyperplanes):
     bits = (np.dot(hyperplanes, emb_128) > 0).astype(np.uint8)
     return bits
 
+def hash_embedding_512(emb_512, hyperplanes):
+    """
+    Takes a 512-d embedding and converts it into a 96-bit NeuralHash.
+    """
+    emb_512 /= np.linalg.norm(emb_512)
+    bits = (np.dot(hyperplanes, emb_512) > 0).astype(np.uint8)
+    return bits
 
 def bits_to_hex(bits):
     return ''.join(f"{int(''.join(map(str, bits[i:i+8])),2):02x}" for i in range(0, len(bits), 8))
