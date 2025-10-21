@@ -15,7 +15,9 @@ from neuralhash_utils_R100 import (
 LFW_DIR = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\datasets\LFW\lfw-deepfunneled\lfw-deepfunneled"
 PAIRS_FILE = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\datasets\LFW\pairs_new.csv"
 PCA_MODEL_PATH = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\models\pca_512_to_128.pkl"
-HYPERPLANE_PATH = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\Dat FIle\my_seed128.dat"
+HYPERPLANE_PATH = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\models\neuralhash_128x96_seed1.dat"
+HYPERPLANE_PATH_128 =r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\Dat FIle\my_seed128.dat"
+HYPERPLANE_PATH_512 = r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\Dat FIle\my_seed512.dat"
 HASH_CACHE_FILE = "neuralhash_cacherf.json"
 
 # ----------------- Utility Functions -----------------
@@ -32,16 +34,17 @@ def calculate_accuracy(threshold, distances, labels):
 try:
     pca_model = load_pca_model(PCA_MODEL_PATH)
     hyperplanes = load_hyperplanes(HYPERPLANE_PATH)
+    hyperplanes128 = load_hyperplanes(HYPERPLANE_PATH_128)
+    #hyperplane512 = load_hyperplanes(HYPERPLANE_PATH_512)
     print("✅ Models loaded successfully.")
 except Exception as e:
     print(f"❌ Error loading models: {e}")
     exit(1)
 
 # ----------------- Test Embedding -----------------
-emb = get_embedding(
-    r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\datasets\LFW\lfw-deepfunneled\lfw-deepfunneled\Aaron_Eckhart\Aaron_Eckhart_0001.jpg"
-)
+emb = get_embedding(r"D:\FYP\Madusha_ArcFace_Evaluation\Arcface-Verification-System_Evaluation\datasets\LFW\lfw-deepfunneled\lfw-deepfunneled\Aaron_Eckhart\Aaron_Eckhart_0001.jpg")
 nhash = hash_embedding(emb, pca_model, hyperplanes)
+nhash128 = hash_embedding(emb, pca_model, hyperplanes128)
 print("Test hash:", nhash)
 print("✅ Test passed.\n")
 
@@ -79,14 +82,18 @@ else:
             try:
                 emb1 = get_embedding(path1)
                 hash1 = hash_embedding(emb1, pca_model, hyperplanes)
+                hash1_128 =hash_embedding(emb1,pca_model,hyperplanes128)
                 emb2 = get_embedding(path2)
                 hash2 =hash_embedding(emb2, pca_model, hyperplanes)
+                hash2_128 =hash_embedding(emb2, pca_model, hyperplanes128)
             except ValueError:
                 continue
             dist = calculate_hamming_distance(hash1, hash2)
+            dist_128 = calculate_hamming_distance(hash1_128, hash2_128)
             label = 1 if is_match else 0
            # print(f" Distance - {dist},cosine_similarity- {cosine_similarity(emb1,emb2)} - {label}")
-            print(f" Distance - {dist} - {label}")
+            print(f" Distance hash1- {dist} - {label}")
+            print(f" Distance hash1_128- {dist_128} - {label}")
             all_pairs_data.append({'distance': dist, 'label': label})
 
 end_time = time.time()

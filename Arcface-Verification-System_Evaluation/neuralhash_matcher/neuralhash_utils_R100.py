@@ -37,11 +37,29 @@ def load_pca_model(path):
     with open(path, 'rb') as f:
         return pickle.load(f)['pca_model']
 
+#def load_hyperplanes(path):
+ #   with open(path, "rb") as f:
+  #      f.seek(32)  # Skip the first 32 bytes of metadata
+   #     arr = np.fromfile(f, dtype=np.int8, count=128*96)
+    #arr = arr.reshape(96, 128).astype(np.float32)
+    #return arr
+
 def load_hyperplanes(path):
+    file_size = os.path.getsize(path)
+    dtype = np.float32
+    bytes_per_elem = np.dtype(dtype).itemsize  # 4 bytes for float32
+    expected_bytes = 128 * 96 * bytes_per_elem
+    header_bytes = 32
+
     with open(path, "rb") as f:
-        f.seek(32)  # Skip the first 32 bytes of metadata
-        arr = np.fromfile(f, dtype=np.int8, count=128*96)
-    arr = arr.reshape(96, 128).astype(np.float32)
+        # If file has extra bytes (likely header)
+        if file_size > expected_bytes:
+            f.seek(header_bytes)
+            arr = np.fromfile(f, dtype=dtype, count=128 * 96)
+        else:
+            arr = np.fromfile(f, dtype=dtype)
+
+    arr = arr.reshape(96, 128)
     return arr
 
 
