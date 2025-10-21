@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Face Verification</title>
+    <style>
+        video, canvas {
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ArcFace Verification System</h1>
+
+    <div>
+        <label for="account">Account:</label>
+        <input type="text" id="account" value="test_account">
+    </div>
+
+    <video id="video" width="320" height="240" autoplay></video><br>
+    <button id="captureBtn">Capture & Identify</button>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+    <h3>Result:</h3>
+    <pre id="result"></pre>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const resultBox = document.getElementById('result');
+
+        // Ask for webcam access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam: ", err);
+                alert("Could not access webcam");
+            });
+
+        document.getElementById('captureBtn').addEventListener('click', async () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            const account = document.getElementById('account').value;
+
+            try {
+                const response = await fetch('/identify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ image: dataUrl, account })
+                });
+                const data = await response.json();
+                resultBox.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error("Error sending image:", error);
+                resultBox.textContent = "Error: " + error;
+            }
+        });
+    </script>
+</body>
+</html>

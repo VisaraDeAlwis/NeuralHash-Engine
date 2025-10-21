@@ -1,0 +1,10 @@
+venv/
+venv1/
+data/dataset/
+temp_captures/
+vouchers/
+assets/
+data/gallery/
+datasets/
+models
+

@@ -1,0 +1,10 @@
+facenet-pytorch
+opencv-python
+torch
+torchvision
+numpy
+scikit-learn
+pillow
+cryptography
+pycryptodome
+secretsharing
