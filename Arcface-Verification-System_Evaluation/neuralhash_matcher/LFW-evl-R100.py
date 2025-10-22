@@ -99,6 +99,8 @@ else:
 # ----------------- Stage 2: Process Pairs Using Cached Embeddings -----------------
 print("\n--- Stage 2: Processing Pairs and Evaluating ---")
 all_pairs_data = []
+all_pairs_data_128 =[]
+all_pairs_data_512 = []
 start_time = time.time()
 
 with open(PAIRS_FILE, "r") as f:
@@ -155,6 +157,8 @@ with open(PAIRS_FILE, "r") as f:
 
         # Storing data for Apple's hash for the 10-fold validation
         all_pairs_data.append({'distance': dist, 'label': label})
+        all_pairs_data_128.append({'distance': dist_128, 'label': label})
+        all_pairs_data_512.append({'distance': dist_512, 'label': label})
 
 end_time = time.time()
 processing_duration = end_time - start_time
@@ -162,6 +166,8 @@ print("🎯 Pair processing completed successfully.\n")
 
 
 # ----------------- Stage 3: 10-Fold Cross Validation -----------------
+#Accuracy score for Original Seed.dat file with ResNet100
+
 accuracies = []
 if all_pairs_data:
     fold_size = len(all_pairs_data) // 10
@@ -171,6 +177,107 @@ if all_pairs_data:
         
         test_data = all_pairs_data[start:end]
         train_data = all_pairs_data[:start] + all_pairs_data[end:]
+
+        train_distances = np.array([p['distance'] for p in train_data])
+        train_labels = np.array([p['label'] for p in train_data])
+        test_distances = np.array([p['distance'] for p in test_data])
+        test_labels = np.array([p['label'] for p in test_data])
+        
+        best_fold_accuracy = 0
+        best_fold_threshold = 0
+        # Iterate through possible thresholds (0 to 96 for a 96-bit hash)
+        for threshold in range(len(hyperplanes) + 1):
+            acc = calculate_accuracy(threshold, train_distances, train_labels)
+            if acc > best_fold_accuracy:
+                best_fold_accuracy = acc
+                best_fold_threshold = threshold
+                
+        fold_accuracy = calculate_accuracy(best_fold_threshold, test_distances, test_labels)
+        accuracies.append(fold_accuracy)
+
+# --- Final Results ---
+if accuracies:
+    mean_accuracy = np.mean(accuracies)
+    std_dev = np.std(accuracies)
+
+    print("\n--- LFW 10-Fold Cross-Validation Results (Using Apple NeuralHash) ---")
+    print(f"Mean Accuracy: {mean_accuracy:.4f}")
+    print(f"Standard Deviation: (+/-) {std_dev:.4f}")
+    print("\nIndividual Fold Accuracies:")
+    for idx, acc in enumerate(accuracies):
+        print(f"  Fold {idx+1}: {acc:.4f}")
+    
+    avg_time_per_pair = processing_duration / len(all_pairs_data) if all_pairs_data else 0
+    print(f"\n⏱️  Average processing time per pair (excluding embedding): {avg_time_per_pair:.6f} seconds")
+    
+    print("----------------------------------------------------------------------")
+else:
+    print("No pairs were processed to calculate accuracy.")
+
+#for 128 generated dat file
+print("Evaluations for 128*96 generated dat")
+
+
+accuracies = []
+if all_pairs_data_128:
+    fold_size = len(all_pairs_data_128) // 10
+    print("--- Stage 3: Starting 10-Fold Cross-Validation ---")
+    for i in tqdm(range(10), desc="Processing Folds"):
+        start, end = i * fold_size, (i + 1) * fold_size
+
+        test_data = all_pairs_data_128[start:end]
+        train_data = all_pairs_data_128[:start] + all_pairs_data_128[end:]
+
+        train_distances = np.array([p['distance'] for p in train_data])
+        train_labels = np.array([p['label'] for p in train_data])
+        test_distances = np.array([p['distance'] for p in test_data])
+        test_labels = np.array([p['label'] for p in test_data])
+        
+        best_fold_accuracy = 0
+        best_fold_threshold = 0
+        # Iterate through possible thresholds (0 to 96 for a 96-bit hash)
+        for threshold in range(len(hyperplanes) + 1):
+            acc = calculate_accuracy(threshold, train_distances, train_labels)
+            if acc > best_fold_accuracy:
+                best_fold_accuracy = acc
+                best_fold_threshold = threshold
+                
+        fold_accuracy = calculate_accuracy(best_fold_threshold, test_distances, test_labels)
+        accuracies.append(fold_accuracy)
+
+# --- Final Results ---
+if accuracies:
+    mean_accuracy = np.mean(accuracies)
+    std_dev = np.std(accuracies)
+
+    print("\n--- LFW 10-Fold Cross-Validation Results (Using Apple NeuralHash) ---")
+    print(f"Mean Accuracy: {mean_accuracy:.4f}")
+    print(f"Standard Deviation: (+/-) {std_dev:.4f}")
+    print("\nIndividual Fold Accuracies:")
+    for idx, acc in enumerate(accuracies):
+        print(f"  Fold {idx+1}: {acc:.4f}")
+    
+    avg_time_per_pair = processing_duration / len(all_pairs_data) if all_pairs_data else 0
+    print(f"\n⏱️  Average processing time per pair (excluding embedding): {avg_time_per_pair:.6f} seconds")
+    
+    print("----------------------------------------------------------------------")
+else:
+    print("No pairs were processed to calculate accuracy.")
+
+#for generated 512*96 dat
+
+
+print("Evaluations for 512*96 generated dat")
+
+accuracies = []
+if all_pairs_data_512:
+    fold_size = len(all_pairs_data_512) // 10
+    print("--- Stage 3: Starting 10-Fold Cross-Validation ---")
+    for i in tqdm(range(10), desc="Processing Folds"):
+        start, end = i * fold_size, (i + 1) * fold_size
+
+        test_data = all_pairs_data_512[start:end]
+        train_data = all_pairs_data_512[:start] + all_pairs_data_512[end:]
 
         train_distances = np.array([p['distance'] for p in train_data])
         train_labels = np.array([p['label'] for p in train_data])

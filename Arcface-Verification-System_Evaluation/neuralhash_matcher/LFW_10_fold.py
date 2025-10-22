@@ -24,11 +24,13 @@ LFW_DIR = "D://FYP//Madusha_ArcFace_Evaluation//Arcface-Verification-System_Eval
 PAIRS_FILE = "D://FYP//Madusha_ArcFace_Evaluation//Arcface-Verification-System_Evaluation//datasets//LFW//pairs_new.csv"
 PCA_MODEL_PATH = 'D://FYP//Madusha_ArcFace_Evaluation//Arcface-Verification-System_Evaluation//models//pca_512_to_128.pkl'
 HYPERPLANE_PATH = 'D://FYP//Madusha_ArcFace_Evaluation//Arcface-Verification-System_Evaluation//models//neuralhash_128x96_seed1.dat'
+HYPERPLANE_PATH_128 = 'D://FYP//Madusha_ArcFace_Evaluation//Arcface-Verification-System_Evaluation//Dat FIle//my_seed128.dat'
 
 # --- Load Models ---
 try:
     pca_model = load_pca_model(PCA_MODEL_PATH)
     hyperplanes = load_hyperplanes(HYPERPLANE_PATH)
+    hyperplanes_128 = load_hyperplanes(HYPERPLANE_PATH_128)
     print("Models loaded successfully.")
 except Exception as e:
     print(f"Error loading models: {e}")
@@ -36,6 +38,7 @@ except Exception as e:
 
 # --- Step 1: Pre-calculate all distances to avoid redundant processing ---
 all_pairs_data = []
+all_pairs_data_128 = []
 print("Step 1: Pre-processing all pairs to generate hashes and distances...")
 with open(PAIRS_FILE, 'r') as f:
     reader = csv.reader(f)
@@ -58,28 +61,83 @@ with open(PAIRS_FILE, 'r') as f:
 
         try:
             bits1 = generate_neuralhash(path1, pca_model, hyperplanes)
+            bits1_128 = generate_neuralhash(path1, pca_model, hyperplanes_128)
             bits2 = generate_neuralhash(path2, pca_model, hyperplanes)
+            bits2_128 = generate_neuralhash(path2, pca_model, hyperplanes_128)
         except ValueError:
             continue
         
         dist = calculate_hamming_distance(bits1, bits2)
+        dist_128 = calculate_hamming_distance(bits1_128, bits2_128)
         label = 1 if is_match else 0
         all_pairs_data.append({'distance': dist, 'label': label})
+        all_pairs_data_128.append({'distance': dist_128, 'label': label})
 
 print(f"\nSuccessfully pre-processed {len(all_pairs_data)} pairs.")
 
 # --- Step 2: Perform 10-Fold Cross-Validation ---
 accuracies = []
 # Ensure we have data to process
-if all_pairs_data:
-    fold_size = len(all_pairs_data) // 10
+if all_pairs_data_128:
+    fold_size = len(all_pairs_data_128) // 10
+    print("\nStep 2: Starting 10-Fold Cross-Validation...")
+    for i in tqdm(range(10), desc="Processing Folds"):
+        # --- 2a: Split data into training (9 folds) and testing (1 fold) ---
+        start, end = i * fold_size, (i + 1) * fold_size
+
+        test_data = all_pairs_data_128[start:end]
+        train_data = all_pairs_data_128[:start] + all_pairs_data_128[end:]
+
+        # Extract distances and labels for each set
+        train_distances = np.array([p['distance'] for p in train_data])
+        train_labels = np.array([p['label'] for p in train_data])
+        test_distances = np.array([p['distance'] for p in test_data])
+        test_labels = np.array([p['label'] for p in test_data])
+        
+        # --- 2b: Find the best threshold ONLY on the training data for this fold ---
+        best_fold_accuracy = 0
+        best_fold_threshold = 0
+        for threshold in range(len(hyperplanes) + 1):
+            acc = calculate_accuracy(threshold, train_distances, train_labels)
+            if acc > best_fold_accuracy:
+                best_fold_accuracy = acc
+                best_fold_threshold = threshold
+                
+        # --- 2c: Apply the best threshold to the unseen test data ---
+        fold_accuracy = calculate_accuracy(best_fold_threshold, test_distances, test_labels)
+        accuracies.append(fold_accuracy)
+
+# --- Step 3: Calculate and display the final results ---
+if accuracies:
+    mean_accuracy = np.mean(accuracies)
+    std_dev = np.std(accuracies)
+
+    print("\n--- LFW 10-Fold Cross-Validation Results ---")
+    print(f"Mean Accuracy: {mean_accuracy:.4f}")
+    print(f"Standard Deviation: (+/-) {std_dev:.4f}")
+    print("\nIndividual Fold Accuracies:")
+    for idx, acc in enumerate(accuracies):
+        print(f"  Fold {idx+1}: {acc:.4f}")
+    print("--------------------------------------------")
+else:
+    print("No pairs were processed to calculate accuracy.")
+
+
+    print("--------------------------------------------------------")
+    rint(f"\nSuccessfully pre-processed {len(all_pairs_data)} pairs.")
+
+# --- Step 2: Perform 10-Fold Cross-Validation ---
+accuracies = []
+# Ensure we have data to process
+if all_pairs_data_128:
+    fold_size = len(all_pairs_data_128) // 10
     print("\nStep 2: Starting 10-Fold Cross-Validation...")
     for i in tqdm(range(10), desc="Processing Folds"):
         # --- 2a: Split data into training (9 folds) and testing (1 fold) ---
         start, end = i * fold_size, (i + 1) * fold_size
         
-        test_data = all_pairs_data[start:end]
-        train_data = all_pairs_data[:start] + all_pairs_data[end:]
+        test_data = all_pairs_data_128[start:end]
+        train_data = all_pairs_data_128[:start] + all_pairs_data_128[end:]
 
         # Extract distances and labels for each set
         train_distances = np.array([p['distance'] for p in train_data])
